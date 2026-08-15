@@ -1,0 +1,212 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  QA Canary Stack — Part D
+  Provisions the Lambda canary, EventBridge schedule, CloudWatch alarms, and SNS topic.
+
+# Deploy command (documented in README — not required to run for this assessment):
+#
+#   aws cloudformation deploy \
+#     --template-file infra/canary-stack.yaml \
+#     --stack-name qa-canary \
+#     --capabilities CAPABILITY_IAM \
+#     --parameter-overrides CanaryAlertEmail=you@example.com \
+#                            LambdaCodeS3Bucket=your-build-bucket \
+#                            LambdaCodeS3Key=canary.zip
+#
+# LambdaCodeS3Bucket/Key: this is a plain CloudFormation template (not SAM),
+# so Lambda source code is not inlined — it's referenced from S3. Build
+# the deployment artifact by zipping the src/ directory (preserving the
+# src/canary/handler.py path, since Handler below is src/canary/handler.handler)
+# and uploading it to S3 before running the deploy command above.
+
+Parameters:
+  CanaryAlertEmail:
+    Type: String
+    Default: alerts@example.com
+    Description: Email address for CloudWatch alarm SNS notifications.
+
+  LambdaCodeS3Bucket:
+    Type: String
+    Default: replace-with-your-build-bucket
+    Description: >
+      S3 bucket containing the packaged canary deployment artifact.
+      Placeholder default — override before deploying for real.
+
+  LambdaCodeS3Key:
+    Type: String
+    Default: canary.zip
+    Description: >
+      S3 key of the zipped src/ directory (must preserve the
+      src/canary/handler.py path so Handler: src/canary/handler.handler resolves).
+
+Resources:
+
+  # ── Logging ─────────────────────────────────────────────────────────────
+  # Declared explicitly (rather than left to Lambda's implicit
+  # auto-creation) so retention is controlled and the IAM role below can
+  # be scoped to this exact ARN instead of a wildcard log-group pattern.
+  CanaryLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-canary"
+      RetentionInDays: 14
+
+  # ── Lambda execution role (least privilege) ─────────────────────────────
+  CanaryExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CanaryLeastPrivilege
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: WriteOwnLogsOnly
+                Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                # Scoped to this function's own log group — not
+                # /aws/lambda/* — so a compromised canary can't write to
+                # (or, via CreateLogGroup, enumerate) any other function's logs.
+                Resource: !GetAtt CanaryLogGroup.Arn
+              - Sid: PublishCanaryMetricsOnly
+                Effect: Allow
+                Action: cloudwatch:PutMetricData
+                # cloudwatch:PutMetricData has no resource-level ARN in
+                # IAM — AWS does not support scoping it by resource, only
+                # by condition key. Resource: "*" is the only valid value
+                # for this action; the Condition below is what actually
+                # enforces least privilege here, restricting the call to
+                # the one namespace this canary is allowed to write to.
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    cloudwatch:namespace: QA/DummyJSON
+
+  # ── Lambda function ──────────────────────────────────────────────────────
+  CanaryFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: CanaryLogGroup
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-canary"
+      Description: Synthetic canary — checks DummyJSON /products and /auth/login on a schedule.
+      Runtime: python3.12
+      Handler: src/canary/handler.handler
+      Role: !GetAtt CanaryExecutionRole.Arn
+      Timeout: 30
+      Code:
+        S3Bucket: !Ref LambdaCodeS3Bucket
+        S3Key: !Ref LambdaCodeS3Key
+
+  # ── EventBridge Scheduler ────────────────────────────────────────────────
+  # A schedule's Target needs its own role (distinct from the function's
+  # execution role) — this role is assumed by the Scheduler service to
+  # invoke the Lambda, not by the Lambda itself.
+  CanarySchedulerInvocationRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeCanaryFunctionOnly
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !GetAtt CanaryFunction.Arn
+
+  CanarySchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Name: !Sub "${AWS::StackName}-schedule"
+      Description: Invokes the DummyJSON canary every 5 minutes.
+      ScheduleExpression: rate(5 minutes)
+      # Required DISABLED per assessment — this template is a deliverable,
+      # not something meant to start running (and billing invocations)
+      # the moment it's deployed. Flip to ENABLED manually after a
+      # verified test invocation.
+      State: DISABLED
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      Target:
+        Arn: !GetAtt CanaryFunction.Arn
+        RoleArn: !GetAtt CanarySchedulerInvocationRole.Arn
+
+  # ── Alerting ────────────────────────────────────────────────────────────
+  CanaryAlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "${AWS::StackName}-canary-alerts"
+
+  CanaryAlertSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref CanaryAlertTopic
+      Protocol: email
+      Endpoint: !Ref CanaryAlertEmail
+
+  AvailabilityAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-AvailabilityAlarm"
+      AlarmDescription: >
+        Availability < 99% for 2 consecutive 5-minute periods — the canary's
+        products and/or auth checks have been failing, not just glitching once.
+      Namespace: QA/DummyJSON
+      MetricName: Availability
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 99
+      ComparisonOperator: LessThanThreshold
+      # No data usually means the canary itself stopped running — treat
+      # that as a problem worth paging on, not silence.
+      TreatMissingData: breaching
+      AlarmActions:
+        - !Ref CanaryAlertTopic
+      OKActions:
+        - !Ref CanaryAlertTopic
+
+  LatencyAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-LatencyAlarm"
+      AlarmDescription: >
+        ProductsLatencyMs p90 > 1000ms in a single 5-minute period.
+      Namespace: QA/DummyJSON
+      MetricName: ProductsLatencyMs
+      ExtendedStatistic: p90
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1000
+      ComparisonOperator: GreaterThanThreshold
+      # A single missing datapoint isn't a latency problem — leave it
+      # non-breaching to avoid paging on a gap rather than a real spike.
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref CanaryAlertTopic
+      OKActions:
+        - !Ref CanaryAlertTopic
+
+Outputs:
+  CanaryFunctionArn:
+    Description: ARN of the deployed canary Lambda.
+    Value: !GetAtt CanaryFunction.Arn
+
+  CanaryAlertTopicArn:
+    Description: ARN of the SNS topic alarms notify.
+    Value: !Ref CanaryAlertTopic
