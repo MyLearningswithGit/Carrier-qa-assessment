@@ -1,0 +1,30 @@
+# Environment — never commit real credentials
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+*.egg-info/
+dist/
+build/
+venv/
+.venv/
+
+# Test reports — generated at runtime, not committed
+reports/*.html
+reports/*.json
+reports/*.csv
+reports/screenshots/*.png
+
+# Node (Bruno CLI)
+node_modules/
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
