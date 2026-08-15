@@ -147,6 +147,15 @@ The DummyJSON credentials in `.env.example` are already filled in
 (`emilys` / `emilyspass` — DummyJSON's own published test account). No
 values need to be changed to run Parts A, B, or C.
 
+The two AWS-related values (`AWS_DEFAULT_REGION`, `CANARY_ALERT_EMAIL`)
+are informational defaults only — nothing in `run_checks.sh` or the
+CloudFormation deploy flow reads `.env` for AWS configuration. Region and
+identity come from your AWS CLI profile (§18); the alarm email is passed
+explicitly via `--parameter-overrides CanaryAlertEmail=...` at deploy
+time, not sourced from this file. Deliberately not wired together —
+CloudFormation parameters passed explicitly on the command line are more
+portable across developers/accounts than a shared `.env` value would be.
+
 ## 9. Running Part A — Bruno
 
 ```bash
@@ -297,31 +306,141 @@ likely to ask about them:
   API is down, but because of client fingerprinting. This would be a
   constant false page to whoever is subscribed to `CanaryAlertTopic`.
 
-## 18. CloudFormation Deployment
+## 18. AWS Setup
 
 Not executed in the current environment — no AWS account/credentials are
-available here. Documented deploy path:
+available here (see §19). The steps below are the documented path for
+**any** developer to deploy this stack into **their own** AWS account.
+
+Nothing in this repository is tied to a specific AWS account, region, or
+identity. `src/canary/handler.py` calls `boto3.client("cloudwatch")` with
+no explicit region, profile, or credentials — it relies entirely on
+boto3's standard credential/region resolution (environment variables →
+shared config/credentials files → IAM role, in the usual order).
+`infra/canary-stack.yaml` never hard-codes an account ID or ARN; every
+cross-resource reference uses `!Ref`, `!GetAtt`, or `!Sub` with
+CloudFormation pseudo parameters (`${AWS::AccountId}`, `${AWS::Region}`,
+`${AWS::StackName}`), and the Lambda's own IAM role is created *by* the
+stack — nothing pre-existing is assumed. Two developers can deploy the
+identical template into two different AWS accounts, each using their own
+credentials, with zero code changes — only their own `--parameter-overrides`
+and AWS CLI profile/region differ.
+
+### 1. Install the AWS CLI
 
 ```bash
-# 1. Package the Lambda source (this is a plain CFN template, not SAM —
-#    Code is referenced from S3, not inlined)
-cd src && zip -r ../canary.zip canary/ && cd ..
-aws s3 cp canary.zip s3://your-build-bucket/canary.zip
+# macOS
+brew install awscli
+# Linux
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && unzip awscliv2.zip && sudo ./aws/install
+# Windows (PowerShell)
+msiexec.exe /i https://awscli.amazonaws.com/AWSCLIV2.msi
+```
 
-# 2. Deploy the stack
+### 2. Configure your own credentials
+
+Never paste credentials into this repository. Use the AWS CLI's own
+config flow, which stores them outside the project (`~/.aws/credentials`
+on macOS/Linux, `%USERPROFILE%\.aws\credentials` on Windows):
+
+```bash
+aws configure --profile qa-assessment
+# prompts for Access Key ID, Secret Access Key, default region, output format
+```
+
+IAM Identity Center / SSO users can use `aws configure sso --profile
+qa-assessment` instead. Either way, credentials never touch this repo.
+
+### 3. Select your profile and region for this shell session
+
+```bash
+# macOS / Linux
+export AWS_PROFILE=qa-assessment
+export AWS_REGION=us-east-1        # any region you have access to — not fixed by the assessment
+
+# Windows (PowerShell)
+$env:AWS_PROFILE = "qa-assessment"
+$env:AWS_REGION = "us-east-1"
+```
+
+### 4. Verify which identity/account you're about to deploy into
+
+```bash
+aws sts get-caller-identity
+```
+
+This prints the account ID, user/role ARN, and identity that every
+subsequent command in this section will act as — confirm it's the
+account you intend before deploying anything.
+
+### 5. Package and deploy
+
+This is a plain CloudFormation template (not SAM), so Lambda source is
+referenced from S3 rather than inlined:
+
+```bash
+cd src && zip -r ../canary.zip canary/ && cd ..
+aws s3 cp canary.zip s3://your-own-build-bucket/canary.zip   # bucket must already exist in your account
+
 aws cloudformation deploy \
   --template-file infra/canary-stack.yaml \
   --stack-name qa-canary \
   --capabilities CAPABILITY_IAM \
-  --parameter-overrides CanaryAlertEmail=you@example.com \
-                         LambdaCodeS3Bucket=your-build-bucket \
+  --parameter-overrides CanaryAlertEmail=your-own-email@example.com \
+                         LambdaCodeS3Bucket=your-own-build-bucket \
                          LambdaCodeS3Key=canary.zip
 ```
 
-`LambdaCodeS3Bucket`/`LambdaCodeS3Key` default to obvious placeholder
-values (`replace-with-your-build-bucket` / `canary.zip`) so the template
-is syntactically valid and passes `cfn-lint` out of the box, but must be
-overridden with a real bucket before an actual deploy.
+`LambdaCodeS3Bucket`/`LambdaCodeS3Key`/`CanaryAlertEmail` default to
+obvious placeholder values (not a real bucket or personal email) so the
+template is syntactically valid and passes `cfn-lint` out of the box —
+all three must be overridden with your own values for a real deploy.
+
+### 6. Confirm the SNS email subscription
+
+AWS sends a confirmation email to whatever address you passed as
+`CanaryAlertEmail` immediately after the stack creates the subscription.
+**No alarm notification is delivered until that confirmation link is
+clicked** — this is SNS's own behavior, not something this stack can skip.
+
+### 7. Verify the deployed resources
+
+```bash
+# Lambda exists and is configured as expected
+aws lambda get-function --function-name qa-canary-canary
+
+# Invoke it once manually (the EventBridge schedule is DISABLED by design — see §17)
+aws lambda invoke --function-name qa-canary-canary --payload '{}' /tmp/canary-response.json --cli-binary-format raw-in-base64-out
+cat /tmp/canary-response.json
+
+# CloudWatch Logs — the structured JSON lines the handler printed
+aws logs tail /aws/lambda/qa-canary-canary --since 5m
+
+# CloudWatch metrics actually published
+aws cloudwatch get-metric-statistics \
+  --namespace QA/DummyJSON --metric-name Availability \
+  --start-time "$(date -u -v-1H +%Y-%m-%dT%H:%M:%S 2>/dev/null || date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%S)" \
+  --end-time "$(date -u +%Y-%m-%dT%H:%M:%S)" \
+  --period 300 --statistics Average
+
+# Alarm state
+aws cloudwatch describe-alarms --alarm-names qa-canary-AvailabilityAlarm qa-canary-LatencyAlarm
+```
+
+### 8. Clean up
+
+CloudFormation should be the only thing that removes what it created —
+don't manually delete individual resources:
+
+```bash
+aws cloudformation delete-stack --stack-name qa-canary
+aws cloudformation wait stack-delete-complete --stack-name qa-canary   # optional, blocks until fully gone
+```
+
+Confirm nothing was left behind (the stack owns everything it created —
+Lambda, both IAM roles, the log group, both alarms, the SNS topic and
+subscription — so a successful `delete-stack` should leave no residual
+billable resources).
 
 ## 19. Known Limitations
 
