@@ -165,6 +165,19 @@ so it doesn't affect the rest of the script).
 
 **Result:** 9 requests, 27/27 tests, 3/3 assertions passing.
 
+**Note on `environments/local.bru`:** running the collection causes the
+Bruno CLI to rewrite this file's `accessToken` line on disk with the
+freshly-issued token — this is triggered by the **provided**
+`login-valid.bru`'s own `bru.setEnvVar("accessToken", ...)` script, not by
+anything added in this submission, and happens even running that one file
+in isolation. It's disclosed here rather than silently reverted-and-hidden:
+after any local run, `git diff` will show `accessToken`'s value changed
+(harmless — it's a fresh 30-minute JWT each time). Verified this doesn't
+happen for anything added to the collection: `products/list-all.bru` needed
+to hand its `total` value to `products/list-paginated.bru`, and does so
+with `bru.setVar()` (run-scoped, in-memory) rather than `bru.setEnvVar()`
+specifically because the latter was confirmed to persist to this file.
+
 ## 10. Running Part B — pytest
 
 ```bash

@@ -58,9 +58,43 @@ in `run_checks.sh` (a subshell `cd`) and disclosed explicitly in
 `README.md` §9 rather than silently changing the documented command
 without a note.
 
+## A mistake caught during the final audit: silently committing a mutated "do not modify" file
+
+Before the first commit, the collection had already been run several
+times locally to verify assertions — each run left
+`environments/local.bru` on disk with its `accessToken` line rewritten
+(a fresh JWT each time) and, worse, with an extra `unskippedTotal: 194`
+line added, because `products/list-all.bru`'s post-response script used
+`bru.setEnvVar("unskippedTotal", ...)` to hand its value to
+`list-paginated.bru`. That mutated version — not the original provided
+content — got committed as if it were the untouched file, directly
+violating the assessment's "do not modify" instruction for this file.
+
+Caught during the final `git status`/`git diff` audit pass at the end of
+the session, when `local.bru` showed as modified again after a routine
+re-run and the diff was actually read line-by-line instead of assumed
+harmless. Two separate causes, two separate fixes:
+
+1. **`accessToken` rewrite** — confirmed (by running `login-valid.bru` in
+   complete isolation) that this is triggered by the *provided* file's own
+   `bru.setEnvVar()` call, not by anything in this submission, and happens
+   regardless of what else runs. Nothing to fix — this is inherent Bruno
+   CLI v4 behavior — but it's disclosed explicitly in `README.md` §9
+   rather than silently reverted without a note, since it will happen
+   again the moment anyone (including an interviewer) runs the collection.
+2. **`unskippedTotal` addition** — this one *was* within control. Tested
+   `bru.setVar()`/`bru.getVar()` (run-scoped, in-memory) as an alternative
+   to `setEnvVar()`/`getEnvVar()`, confirmed empirically it passes values
+   between requests in the same run without writing anything to disk, and
+   switched `list-all.bru`/`list-paginated.bru` to use it. Restored
+   `environments/local.bru` to its exact original provided content and
+   committed the fix as a new commit rather than rewriting history.
+
 ## Verification
 
 Full collection run (`bru run . -r --env local`) from the collection
 root: 9/9 requests passed, 27/27 `tests{}` assertions passed, 3/3 raw
 `assert{}` block assertions passed (from the provided `login-valid.bru`).
-Re-verified as part of the final `run_checks.sh` run.
+Re-verified as part of the final `run_checks.sh` run, and again after the
+`setVar` fix above to confirm `unskippedTotal` no longer appears in
+`environments/local.bru`'s diff.

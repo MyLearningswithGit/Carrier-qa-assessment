@@ -13,9 +13,12 @@ get {
 script:post-response {
   // Saved so list-paginated.bru can assert its "total" is consistent with
   // this unskipped call, proving pagination params don't change the
-  // collection's reported size.
+  // collection's reported size. Deliberately bru.setVar() (run-scoped,
+  // in-memory), not bru.setEnvVar() — the latter persists to
+  // environments/local.bru on disk, which the assessment says not to
+  // modify. Confirmed empirically: setVar leaves the file untouched.
   if (res.status === 200) {
-    bru.setEnvVar("unskippedTotal", res.body.total);
+    bru.setVar("unskippedTotal", res.body.total);
   }
 }
 
@@ -52,7 +55,7 @@ tests {
 
 docs {
   Baseline contract test for the unpaginated product list. Also captures
-  "total" into an environment variable so the pagination test can assert
+  "total" into a run-scoped variable so the pagination test can assert
   cross-request consistency rather than just checking its own response in
   isolation.
 }

@@ -90,6 +90,26 @@ during this session (not a fabricated transcript):
 
 ## Section 4 — Things AI Got Wrong
 
+**A "do not modify" file was mutated and committed without noticing.**
+`collections/dummyjson/environments/local.bru` is explicitly marked
+"provided — do not modify" in the assessment. Running the Bruno collection
+repeatedly during development, before the first git commit, caused the
+Bruno CLI to rewrite this file on disk twice over: once from the
+*provided* `login-valid.bru`'s own `bru.setEnvVar("accessToken", ...)`
+call (unavoidable — confirmed by running that file in total isolation),
+and once from this submission's own `list-all.bru`, which used
+`bru.setEnvVar("unskippedTotal", ...)` to pass a value to
+`list-paginated.bru`. That second mutation was avoidable and was the
+actual mistake: the file that got committed in the Part A commit was the
+mutated version, with an extra variable line, not the original. This
+wasn't caught by any test — it was caught by actually reading `git diff`
+during a final audit pass instead of assuming a clean `git status` meant
+everything was fine. Fixed by switching to `bru.setVar()` (confirmed
+empirically to be run-scoped and not persisted to disk), restoring the
+file to its original content, and committing the correction separately
+rather than rewriting history. See
+`docs/ai-sessions/bruno-assertions.md` for the full diagnosis.
+
 **The Lambda handler's first working version returned false negatives
 against the real API.** The initial implementation used `urllib.request`
 with no explicit `User-Agent` header. When actually invoked against the

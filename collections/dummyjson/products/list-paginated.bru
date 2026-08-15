@@ -25,7 +25,7 @@ tests {
   });
 
   test("total is consistent with the unskipped call", function() {
-    const unskippedTotal = bru.getEnvVar("unskippedTotal");
+    const unskippedTotal = bru.getVar("unskippedTotal");
     expect(unskippedTotal).to.not.be.undefined;
     expect(res.body.total).to.equal(Number(unskippedTotal));
   });
@@ -34,5 +34,6 @@ tests {
 docs {
   Pagination must not change the collection's reported total — only which
   slice of it is returned. Depends on list-all.bru running first in this
-  folder (seq: 1) to populate the unskippedTotal environment variable.
+  folder (seq: 1) to populate the unskippedTotal run-scoped variable
+  (bru.setVar, not bru.setEnvVar — see list-all.bru's script for why).
 }
