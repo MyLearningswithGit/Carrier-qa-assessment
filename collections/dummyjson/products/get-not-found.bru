@@ -1,0 +1,28 @@
+meta {
+  name: Products - Get By Id (not found)
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/products/9999999
+  body: none
+  auth: none
+}
+
+tests {
+  test("returns HTTP 404 for a nonexistent id", function() {
+    expect(res.status).to.equal(404);
+  });
+
+  test("response body contains a message field", function() {
+    expect(res.body).to.have.property("message");
+    expect(res.body.message).to.be.a("string").and.not.empty;
+  });
+}
+
+docs {
+  Negative scenario: an id far outside the seeded product range (194
+  products exist) must 404 with a descriptive message, not a silent 200
+  with empty/null data.
+}

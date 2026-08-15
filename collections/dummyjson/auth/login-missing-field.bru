@@ -1,0 +1,35 @@
+meta {
+  name: Login - Missing Username Field
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/auth/login
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "password": "{{password}}",
+    "expiresInMins": 30
+  }
+}
+
+tests {
+  test("returns HTTP 400 when username is absent from the body", function() {
+    expect(res.status).to.equal(400);
+  });
+
+  test("response body contains a message field", function() {
+    expect(res.body).to.have.property("message");
+    expect(res.body.message).to.be.a("string").and.not.empty;
+  });
+}
+
+docs {
+  Negative auth scenario: request body deliberately omits "username" (not an
+  empty string — the field itself is missing) to confirm the API validates
+  required-field presence, not just credential correctness.
+}

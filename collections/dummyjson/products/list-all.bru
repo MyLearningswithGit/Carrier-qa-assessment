@@ -1,0 +1,58 @@
+meta {
+  name: Products - List All (default page)
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/products
+  body: none
+  auth: none
+}
+
+script:post-response {
+  // Saved so list-paginated.bru can assert its "total" is consistent with
+  // this unskipped call, proving pagination params don't change the
+  // collection's reported size.
+  if (res.status === 200) {
+    bru.setEnvVar("unskippedTotal", res.body.total);
+  }
+}
+
+tests {
+  test("returns HTTP 200", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("products array is present and non-empty", function() {
+    expect(res.body.products).to.be.an("array").that.is.not.empty;
+  });
+
+  test("total is an integer greater than 0", function() {
+    expect(res.body.total).to.be.a("number");
+    expect(Number.isInteger(res.body.total)).to.be.true;
+    expect(res.body.total).to.be.greaterThan(0);
+  });
+
+  test("every product has the required contract fields", function() {
+    res.body.products.forEach(function(product) {
+      expect(product).to.have.property("id");
+      expect(Number.isInteger(product.id)).to.be.true;
+
+      expect(product.title).to.be.a("string").and.not.empty;
+
+      expect(product.price).to.be.a("number");
+      expect(product.price).to.be.greaterThan(0);
+
+      expect(product.thumbnail).to.be.a("string");
+      expect(product.thumbnail.startsWith("https://")).to.be.true;
+    });
+  });
+}
+
+docs {
+  Baseline contract test for the unpaginated product list. Also captures
+  "total" into an environment variable so the pagination test can assert
+  cross-request consistency rather than just checking its own response in
+  isolation.
+}

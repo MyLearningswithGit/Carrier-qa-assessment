@@ -1,0 +1,35 @@
+meta {
+  name: Products - Search
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/products/search?q=phone
+  body: none
+  auth: none
+}
+
+tests {
+  test("returns HTTP 200", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("returns at least one result", function() {
+    expect(res.body.products).to.be.an("array").that.is.not.empty;
+  });
+
+  test("every result contains 'phone' in title or description (case-insensitive)", function() {
+    res.body.products.forEach(function(product) {
+      const haystack = (product.title + " " + product.description).toLowerCase();
+      expect(haystack.includes("phone")).to.be.true;
+    });
+  });
+}
+
+docs {
+  Case-insensitive substring search. Most matches come from the word
+  "smartphone" inside the description rather than "phone" in the title
+  itself (e.g. Samsung Galaxy S10, Oppo A57) — so the assertion checks
+  title + description combined, not title alone.
+}

@@ -1,0 +1,36 @@
+meta {
+  name: Products - Get By Id (found)
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/products/1
+  body: none
+  auth: none
+}
+
+tests {
+  test("returns HTTP 200", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("id matches the requested id", function() {
+    expect(res.body.id).to.equal(1);
+  });
+
+  test("price is a positive number", function() {
+    expect(res.body.price).to.be.a("number");
+    expect(res.body.price).to.be.greaterThan(0);
+  });
+
+  test("rating is within the valid 0-5 range", function() {
+    expect(res.body.rating).to.be.a("number");
+    expect(res.body.rating).to.be.at.least(0);
+    expect(res.body.rating).to.be.at.most(5);
+  });
+}
+
+docs {
+  Happy-path single-resource lookup by a known-good id.
+}

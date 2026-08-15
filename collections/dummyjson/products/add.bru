@@ -1,0 +1,44 @@
+meta {
+  name: Products - Add
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/products/add
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "title": "QA Assessment Test Product",
+    "price": 29.99
+  }
+}
+
+tests {
+  test("returns HTTP 201", function() {
+    expect(res.status).to.equal(201);
+  });
+
+  test("response echoes the submitted title", function() {
+    expect(res.body.title).to.equal("QA Assessment Test Product");
+  });
+
+  test("response echoes the submitted price", function() {
+    expect(res.body.price).to.equal(29.99);
+  });
+
+  test("response includes a generated id", function() {
+    expect(res.body.id).to.be.a("number");
+  });
+}
+
+docs {
+  SCOPE NOTE: DummyJSON write endpoints (POST/PUT/DELETE) are mocked — the
+  API returns a plausible response (echoing the submitted fields plus a
+  generated id) but does NOT persist anything server-side. A follow-up
+  GET /products/{new id} would 404. This test therefore asserts only the
+  response contract of this single call, not persistence.
+}

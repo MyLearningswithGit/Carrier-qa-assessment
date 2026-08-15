@@ -1,0 +1,43 @@
+meta {
+  name: Login - Valid Credentials
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/auth/login
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "username": "{{username}}",
+    "password": "{{password}}",
+    "expiresInMins": 30
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.accessToken: isDefined
+  res.body.accessToken: isString
+}
+
+script:post-response {
+  // Save the token so authenticated requests in other folders can use it
+  if (res.status === 200) {
+    bru.setEnvVar("accessToken", res.body.accessToken);
+  }
+}
+
+tests {
+  test("accessToken is a non-empty string", function() {
+    expect(res.body.accessToken).to.be.a("string").and.not.empty;
+  });
+
+  test("accessToken has 3 dot-separated JWT segments", function() {
+    const segments = res.body.accessToken.split(".");
+    expect(segments).to.have.lengthOf(3);
+  });
+}

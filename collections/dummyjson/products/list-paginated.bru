@@ -1,0 +1,38 @@
+meta {
+  name: Products - Paginated (limit=5, skip=10)
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/products?limit=5&skip=10
+  body: none
+  auth: none
+}
+
+tests {
+  test("returns HTTP 200", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("returns exactly 5 items", function() {
+    expect(res.body.products).to.be.an("array").with.lengthOf(5);
+  });
+
+  test("limit and skip echo the requested query params", function() {
+    expect(res.body.limit).to.equal(5);
+    expect(res.body.skip).to.equal(10);
+  });
+
+  test("total is consistent with the unskipped call", function() {
+    const unskippedTotal = bru.getEnvVar("unskippedTotal");
+    expect(unskippedTotal).to.not.be.undefined;
+    expect(res.body.total).to.equal(Number(unskippedTotal));
+  });
+}
+
+docs {
+  Pagination must not change the collection's reported total — only which
+  slice of it is returned. Depends on list-all.bru running first in this
+  folder (seq: 1) to populate the unskippedTotal environment variable.
+}
