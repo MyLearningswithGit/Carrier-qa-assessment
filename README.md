@@ -62,23 +62,23 @@ anything else first.
 
 | Requirement | File | Verify |
 |---|---|---|
-| Wrong password → 400 + `message` | `collections/dummyjson/auth/login-wrong-password.bru` | §10 |
-| Missing `username` field → 400 | `collections/dummyjson/auth/login-missing-field.bru` | §10 |
-| `GET /products` — array, total>0, per-item contract | `collections/dummyjson/products/list-all.bru` | §10 |
-| `GET /products?limit=5&skip=10` — exact count + total consistency | `collections/dummyjson/products/list-paginated.bru` | §10 |
-| `GET /products/1` — 200, id/price/rating checks | `collections/dummyjson/products/get-by-id.bru` | §10 |
-| `GET /products/9999999` — 404 + `message` | `collections/dummyjson/products/get-not-found.bru` | §10 |
-| Case-insensitive search | `collections/dummyjson/products/search.bru` | §10 |
-| Mocked add endpoint, response-contract only | `collections/dummyjson/products/add.bru` | §10 |
+| Wrong password → 400 + `message` | `collections/dummyjson/auth/login-wrong-password.bru` | [§10](#10-running-part-a--bruno) |
+| Missing `username` field → 400 | `collections/dummyjson/auth/login-missing-field.bru` | [§10](#10-running-part-a--bruno) |
+| `GET /products` — array, total>0, per-item contract | `collections/dummyjson/products/list-all.bru` | [§10](#10-running-part-a--bruno) |
+| `GET /products?limit=5&skip=10` — exact count + total consistency | `collections/dummyjson/products/list-paginated.bru` | [§10](#10-running-part-a--bruno) |
+| `GET /products/1` — 200, id/price/rating checks | `collections/dummyjson/products/get-by-id.bru` | [§10](#10-running-part-a--bruno) |
+| `GET /products/9999999` — 404 + `message` | `collections/dummyjson/products/get-not-found.bru` | [§10](#10-running-part-a--bruno) |
+| Case-insensitive search | `collections/dummyjson/products/search.bru` | [§10](#10-running-part-a--bruno) |
+| Mocked add endpoint, response-contract only | `collections/dummyjson/products/add.bru` | [§10](#10-running-part-a--bruno) |
 | `login-valid.bru` reviewed, not duplicated | `collections/dummyjson/auth/login-valid.bru` (provided, untouched) | `git log --follow` shows no diff |
 
 ### Part B — Python Unit Tests
 
 | Requirement | File | Verify |
 |---|---|---|
-| `validate_product` — valid/invalid/boundary/type coverage | `tests/unit/test_api_checker.py::TestValidateProduct` (24 cases) | §11 |
-| `calculate_cart_total` — same | `tests/unit/test_api_checker.py::TestCalculateCartTotal` (13 cases) | §11 |
-| `parse_auth_response` — same | `tests/unit/test_api_checker.py::TestParseAuthResponse` (9 cases) | §11 |
+| `validate_product` — valid/invalid/boundary/type coverage | `tests/unit/test_api_checker.py::TestValidateProduct` (24 cases) | [§11](#11-running-part-b--pytest) |
+| `calculate_cart_total` — same | `tests/unit/test_api_checker.py::TestCalculateCartTotal` (13 cases) | [§11](#11-running-part-b--pytest) |
+| `parse_auth_response` — same | `tests/unit/test_api_checker.py::TestParseAuthResponse` (9 cases) | [§11](#11-running-part-b--pytest) |
 | At least one `@pytest.mark.parametrize` group | 3 parametrized groups (invalid ids, invalid prices, invalid quantities) | `grep -c parametrize tests/unit/test_api_checker.py` |
 | `src/api_checker.py` unmodified | Same file, byte-identical to the starter | `git log --follow -- src/api_checker.py` |
 
@@ -86,38 +86,38 @@ anything else first.
 
 | Requirement | File | Verify |
 |---|---|---|
-| Page Object Model, min. 3 classes | `tests/ui/pages/{login_page,inventory_page,cart_page,checkout_page}.py` (4 classes) | §12 |
-| Standard login → inventory, title check | `tests/ui/test_auth.py` | §12 |
-| Locked-out user, exact message | `tests/ui/test_auth.py` | §12 |
-| Empty credentials, error shown | `tests/ui/test_auth.py` | §12 |
-| All 6 products visible | `tests/ui/test_inventory.py` | §12 |
-| Add two by name → badge | `tests/ui/test_cart.py` | §12 |
-| Remove by name → badge + list update | `tests/ui/test_cart.py` | §12 |
-| End-to-end checkout | `tests/ui/test_checkout.py` | §12 |
-| Performance-glitch timing, monotonic clock | `tests/ui/test_performance.py` | §12 |
-| Chromium + Firefox, headless | `pytest-playwright --browser` ×2 | §12 |
-| Screenshot on failure | `tests/ui/conftest.py` | §18 |
+| Page Object Model, min. 3 classes | `tests/ui/pages/{login_page,inventory_page,cart_page,checkout_page}.py` (4 classes) | [§12](#12-running-part-c--playwright) |
+| Standard login → inventory, title check | `tests/ui/test_auth.py` | [§12](#12-running-part-c--playwright) |
+| Locked-out user, exact message | `tests/ui/test_auth.py` | [§12](#12-running-part-c--playwright) |
+| Empty credentials, error shown | `tests/ui/test_auth.py` | [§12](#12-running-part-c--playwright) |
+| All 6 products visible | `tests/ui/test_inventory.py` | [§12](#12-running-part-c--playwright) |
+| Add two by name → badge | `tests/ui/test_cart.py` | [§12](#12-running-part-c--playwright) |
+| Remove by name → badge + list update | `tests/ui/test_cart.py` | [§12](#12-running-part-c--playwright) |
+| End-to-end checkout | `tests/ui/test_checkout.py` | [§12](#12-running-part-c--playwright) |
+| Performance-glitch timing, monotonic clock | `tests/ui/test_performance.py` | [§12](#12-running-part-c--playwright) |
+| Chromium + Firefox, headless | `pytest-playwright --browser` ×2 | [§12](#12-running-part-c--playwright) |
+| Screenshot on failure | `tests/ui/conftest.py` | [§18](#18-screenshots-part-c) |
 
 ### Part D — AWS Reliability Layer
 
 | Requirement | File | Verify |
 |---|---|---|
-| Lambda: 2 checks, latency, 3 metrics, structured logs, safe summary | `src/canary/handler.py` | §13, §14 |
-| CloudFormation: IAM least-privilege, Lambda, Scheduler, alarms, SNS | `infra/canary-stack.yaml` | §15, §19 |
-| EventBridge Schedule, `rate(5 minutes)`, `DISABLED` | `infra/canary-stack.yaml` (`CanarySchedule`) | §14 |
-| `AvailabilityAlarm` — Avg, 300s, 2 periods, <99 | `infra/canary-stack.yaml` | §19 |
-| `LatencyAlarm` — p90, 300s, 1 period, >1000ms | `infra/canary-stack.yaml` | §19 |
-| SNS topic + email subscription | `infra/canary-stack.yaml` | §14 |
-| 2 Logs Insights queries | `infra/logs-insights-queries.md` | §14 |
+| Lambda: 2 checks, latency, 3 metrics, structured logs, safe summary | `src/canary/handler.py` | [§13](#13-part-d--local-validation), [§14](#14-part-d--live-aws-validation) |
+| CloudFormation: IAM least-privilege, Lambda, Scheduler, alarms, SNS | `infra/canary-stack.yaml` | [§15](#15-cfn-lint), [§19](#19-aws-architecture--design-decisions) |
+| EventBridge Schedule, `rate(5 minutes)`, `DISABLED` | `infra/canary-stack.yaml` (`CanarySchedule`) | [§14](#14-part-d--live-aws-validation) |
+| `AvailabilityAlarm` — Avg, 300s, 2 periods, <99 | `infra/canary-stack.yaml` | [§19](#19-aws-architecture--design-decisions) |
+| `LatencyAlarm` — p90, 300s, 1 period, >1000ms | `infra/canary-stack.yaml` | [§19](#19-aws-architecture--design-decisions) |
+| SNS topic + email subscription | `infra/canary-stack.yaml` | [§14](#14-part-d--live-aws-validation) |
+| 2 Logs Insights queries | `infra/logs-insights-queries.md` | [§14](#14-part-d--live-aws-validation) |
 
 ### Orchestration, Docs, and Part E
 
 | Requirement | File | Verify |
 |---|---|---|
-| `run_checks.sh` — 4 chained checks, fail-fast | `run_checks.sh` | §16 |
-| `AI_USAGE.md` — 4 required sections | `AI_USAGE.md` | §23 |
-| 3 named AI session logs | `docs/ai-sessions/{unit-test-design,cloudformation,bruno-assertions}.md` | §23 |
-| Reports from at least one full run of each part | `reports/` (generated — run `./run_checks.sh` to populate) | §17 |
+| `run_checks.sh` — 4 chained checks, fail-fast | `run_checks.sh` | [§16](#16-run_checkssh) |
+| `AI_USAGE.md` — 4 required sections | `AI_USAGE.md` | [§23](#23-ai-usage) |
+| 3 named AI session logs | `docs/ai-sessions/{unit-test-design,cloudformation,bruno-assertions}.md` | [§23](#23-ai-usage) |
+| Reports from at least one full run of each part | `reports/` (generated — run `./run_checks.sh` to populate) | [§17](#17-reports) |
 
 ---
 
@@ -173,7 +173,7 @@ framework stretched to cover everything.
                      reports/ (HTML/JSON — gitignored contents)
 
 ┌─────────────────────────────────────────────────────────────────┐
-│  Part D: AWS Reliability Layer — deployed and validated, see §14  │
+│  Part D: AWS Reliability Layer — deployed and validated, see [§14](#14-part-d--live-aws-validation)  │
 │                                                                     │
 │  EventBridge Scheduler (rate(5 min), created DISABLED)            │
 │         │ invokes                                                  │
@@ -210,7 +210,7 @@ qa-assessment/
 │   ├── environments/local.bru    # provided — reads from .env
 │   ├── auth/                     # login-valid (provided) + 2 negative cases
 │   ├── products/                 # 6 request files
-│   └── carts/                    # scaffolded, unused — see §21
+│   └── carts/                    # scaffolded, unused — see [§21](#21-known-limitations)
 ├── tests/
 │   ├── unit/test_api_checker.py  # Part B — 46 tests
 │   └── ui/
@@ -224,7 +224,7 @@ qa-assessment/
 │   └── screenshots/
 ├── docs/ai-sessions/             # Part E — conversation logs
 ├── run_checks.sh                 # orchestrates all four parts
-├── demo_aws_live.sh              # optional — narrated live AWS demo, see §20
+├── demo_aws_live.sh              # optional — narrated live AWS demo, see [§20](#20-aws-setup--deploy-into-your-own-account)
 ├── AI_USAGE.md                   # Part E
 ├── .env.example                  # copy to .env
 └── README.md
@@ -246,7 +246,7 @@ qa-assessment/
 - Python 3.12
 - Node.js 18+ (for the Bruno CLI)
 - `git`
-- AWS CLI (only if you intend to actually deploy Part D — see §20)
+- AWS CLI (only if you intend to actually deploy Part D — see [§20](#20-aws-setup--deploy-into-your-own-account))
 
 ## 8. Installation
 
@@ -269,7 +269,7 @@ values need to be changed to run Parts A, B, or C.
 The two AWS-related values (`AWS_DEFAULT_REGION`, `CANARY_ALERT_EMAIL`)
 are informational defaults only — nothing in `run_checks.sh` or the
 CloudFormation deploy flow reads `.env` for AWS configuration. Region and
-identity come from your AWS CLI profile (§20); the alarm email is passed
+identity come from your AWS CLI profile ([§20](#20-aws-setup--deploy-into-your-own-account)); the alarm email is passed
 explicitly via `--parameter-overrides CanaryAlertEmail=...` at deploy
 time, not sourced from this file. Deliberately not wired together —
 CloudFormation parameters passed explicitly on the command line are more
@@ -351,7 +351,7 @@ validated locally, without any AWS account:
   metrics attempted) and multiple failure paths (connection error, non-2xx,
   metrics-publish failure when no AWS credentials are present) all return
   a well-formed summary dict without raising.
-- `infra/canary-stack.yaml` validated with `cfn-lint` (§15).
+- `infra/canary-stack.yaml` validated with `cfn-lint` ([§15](#15-cfn-lint)).
 
 ## 14. Part D — Live AWS Validation
 
@@ -376,10 +376,10 @@ packaging attempt zipped `src/canary/` from inside `src/`, producing
 `canary/handler.py` at the zip root — but the template's
 `Handler: src/canary/handler.handler` requires `src/canary/handler.py`.
 `cfn-lint` cannot catch this; it's a packaging problem, not a template
-problem. The corrected command is used throughout §20 below. See
-`AI_USAGE.md` §4 for the full diagnosis.
+problem. The corrected command is used throughout [§20](#20-aws-setup--deploy-into-your-own-account) below. See
+[`AI_USAGE.md` §4](AI_USAGE.md#section-4--things-ai-got-wrong) for the full diagnosis.
 
-**To reproduce:** see §20 for the full deploy → verify → clean-up cycle,
+**To reproduce:** see [§20](#20-aws-setup--deploy-into-your-own-account) for the full deploy → verify → clean-up cycle,
 and `demo_aws_live.sh` for a narrated, step-by-step version of the
 verification stage.
 
@@ -412,7 +412,7 @@ finding's actual `Level` instead of trusting the raw exit code.
 
 Note: `run_checks.sh` intentionally never touches AWS — Part D's local
 validation there is `cfn-lint` only (static). The live AWS deployment in
-§14 is separate, additional verification beyond what's required or what
+[§14](#14-part-d--live-aws-validation) is separate, additional verification beyond what's required or what
 this script performs.
 
 ## 17. Reports
@@ -441,7 +441,7 @@ other.
 
 ## 19. AWS Architecture — Design Decisions
 
-See §4 for the diagram. Key decisions, in the order an interviewer is
+See [§4](#4-architecture) for the diagram. Key decisions, in the order an interviewer is
 likely to ask about them:
 
 - **`cloudwatch:PutMetricData` uses `Resource: "*"`** in the IAM policy —
@@ -460,7 +460,7 @@ likely to ask about them:
 - **`TreatMissingData` differs between the two alarms**: `breaching` for
   `AvailabilityAlarm` (no data usually means the canary itself stopped
   running, which is itself a problem worth paging on — observed live, see
-  §14), `notBreaching` for `LatencyAlarm` (a single missing datapoint
+  [§14](#14-part-d--live-aws-validation)), `notBreaching` for `LatencyAlarm` (a single missing datapoint
   against `EvaluationPeriods: 1` shouldn't page on a gap rather than a
   real spike).
 - **The Lambda handler needs an explicit `User-Agent` header.** DummyJSON's
@@ -475,7 +475,7 @@ likely to ask about them:
 
 ## 20. AWS Setup — Deploy Into Your Own Account
 
-This stack has already been deployed and fully verified once (§14) and
+This stack has already been deployed and fully verified once ([§14](#14-part-d--live-aws-validation)) and
 then torn down to avoid unnecessary cost. The steps below let **any**
 developer — you, or an interviewer with their own AWS account — repeat
 that exact cycle.
@@ -547,7 +547,7 @@ This is a plain CloudFormation template (not SAM), so Lambda source is
 referenced from S3 rather than inlined. **Zip from the project root**,
 not from inside `src/` — the template's `Handler: src/canary/handler.handler`
 requires `src/canary/handler.py` at that exact path inside the archive
-(a real packaging bug hit during this project's own validation — see §14):
+(a real packaging bug hit during this project's own validation — see [§14](#14-part-d--live-aws-validation)):
 
 ```bash
 zip -r canary.zip src/canary/
@@ -654,16 +654,16 @@ chmod +x demo_aws_live.sh
 ## 21. Known Limitations
 
 - **The stack is not currently deployed.** It was deployed once, fully
-  verified end-to-end (§14), and torn down afterward to avoid unnecessary
+  verified end-to-end ([§14](#14-part-d--live-aws-validation)), and torn down afterward to avoid unnecessary
   AWS cost — that's a deliberate operational choice, not a gap. Redeploy
-  with §20 to see it live again.
+  with [§20](#20-aws-setup--deploy-into-your-own-account) to see it live again.
 - **The Logs Insights queries** (`infra/logs-insights-queries.md`) were
   written against the exact JSON keys the handler emits, and the
-  underlying log format was directly confirmed live (§14) — but the saved
+  underlying log format was directly confirmed live ([§14](#14-part-d--live-aws-validation)) — but the saved
   queries themselves were not run through the CloudWatch Logs Insights
   console UI specifically, since that benefits from a longer accumulation
   of log data than a short verification cycle produces.
-- **Bruno CLI v4 requires a working-directory quirk** — see §10. Documented
+- **Bruno CLI v4 requires a working-directory quirk** — see [§10](#10-running-part-a--bruno). Documented
   rather than silently worked around without disclosure.
 - **This dev machine's Python install initially failed SSL verification**
   against `dummyjson.com` (missing local CA bundle, a known Python.org-on-macOS
@@ -686,7 +686,7 @@ See [`AI_USAGE.md`](AI_USAGE.md) and [`docs/ai-sessions/`](docs/ai-sessions/)
 for the full accounting of AI-assisted work on this submission, including
 concrete decisions accepted/rejected and genuine AI-produced defects
 (the missing `User-Agent` header, and the zip-packaging path mismatch
-discussed in §14) that were each caught by actually running the code
+discussed in [§14](#14-part-d--live-aws-validation)) that were each caught by actually running the code
 against real systems, not by inspection alone.
 
 ## 24. CI/CD
