@@ -442,6 +442,20 @@ Lambda, both IAM roles, the log group, both alarms, the SNS topic and
 subscription — so a successful `delete-stack` should leave no residual
 billable resources).
 
+### Optional: `demo_aws_live.sh`
+
+Not part of the graded deliverable — Part D's requirement is the code and
+template, not a deployment. This script exists purely as a narrated,
+step-by-step walkthrough of the stack actually running in a real AWS
+account (resources → schedule state → live Lambda invoke → logs →
+metrics → alarms → SNS), pausing between each step for live narration.
+Requires the stack already deployed per the steps above:
+
+```bash
+chmod +x demo_aws_live.sh
+./demo_aws_live.sh
+```
+
 ## 19. Known Limitations
 
 - **No live AWS deployment.** The stack was validated with `cfn-lint` and
