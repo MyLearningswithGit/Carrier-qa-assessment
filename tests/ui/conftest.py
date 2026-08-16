@@ -24,6 +24,20 @@ def _safe_filename(name: str) -> str:
     return re.sub(r"[^A-Za-z0-9_.\-\[\]]", "_", name)
 
 
+@pytest.fixture(autouse=True)
+def _log_test_execution(request):
+    """Prints each test's node id before/after it runs, so pytest-html's
+    report shows something for every test instead of its own "No log
+    output captured." fallback — which otherwise fires for the 14 of 16
+    UI tests that don't already call print() themselves (only the
+    performance tests do). Verified empirically that this attaches to the
+    same row pytest-html displays for a passing test rather than a
+    separate ::setup row."""
+    print(f"\n▶ RUNNING {request.node.nodeid}")
+    yield
+    print(f"✔ FINISHED {request.node.nodeid}")
+
+
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
 def pytest_runtest_makereport(item, call):
     outcome = yield
